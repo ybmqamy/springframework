@@ -26,6 +26,5 @@ public class main {
             throw new RuntimeException(e);
         }
         PropertyResolver propertyResolver=new PropertyResolver(properties);
-        System.out.println(propertyResolver.getProper("${app.title:luguan}"));
     }
 }
