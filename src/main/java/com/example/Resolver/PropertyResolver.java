@@ -1,4 +1,6 @@
-package com.example;
+package com.example.Resolver;
+
+import com.example.Record.PropertyExpr;
 
 import javax.annotation.Nullable;
 import java.time.*;
@@ -41,6 +43,7 @@ public class PropertyResolver {
         converters.put(Duration.class, s -> Duration.parse(s));
         converters.put(ZoneId.class, s -> ZoneId.of(s));
     }
+
     /// 获取对应的配置项，暂时只支持标准的格式
     @Nullable
     public String getProper(String key){
@@ -64,7 +67,7 @@ public class PropertyResolver {
     }
     /// 类型的转换，本质就是从string转换到其他类型，返回的即为转换后的泛型
     private <T> T convert(Class<T> classtype, String value) {
-        /// 拿到对应类型的映射函数
+        /// 根据对应的字节码拿到对应类型的映射函数
         Function<String, Object> stringObjectFunction = this.converters.get(classtype);
         if(stringObjectFunction==null){
             throw new IllegalArgumentException("您的字符非法");
@@ -90,5 +93,9 @@ public class PropertyResolver {
         return null;
     }
 
+    /// 构造一个register，可以使得用户自定义转换对象
+    public <T >void registerconvertor(Class<T> classtyp,Function<String,Object> function){
+        this.converters.put(classtyp.getClass(),function);
+    }
 
 }

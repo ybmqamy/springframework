@@ -1,8 +1,12 @@
 package com.example;
 
+import com.example.Resolver.PropertyResolver;
+import com.example.Utils.YamlUtils;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 
 public class main {
@@ -18,13 +22,32 @@ public class main {
 //            return null;
 //        });
 //        System.out.println(classList);
-        ///  读入整个配置文件
-        Properties properties=new Properties();
-        try(InputStream input=main.class.getClassLoader().getResourceAsStream("application.properties")){
-            properties.load(input);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        PropertyResolver propertyResolver=new PropertyResolver(properties);
+//        ///  读入整个配置文件
+//        Properties properties=new Properties();
+//        try(InputStream input=main.class.getClassLoader().getResourceAsStream("application.properties")){
+//            properties.load(input);
+//        } catch (IOException e) {
+//            throw new RuntimeException(e);
+//        }
+//        PropertyResolver propertyResolver=new PropertyResolver(properties);
+
+//        Map<String, Object> map = YamlUtils.loadYamlAsFlatMap("application.yaml");
+//        System.out.println(map);
+//        Properties properties=new Properties();
+//        properties.putAll(map);
+//        System.out.println(properties.get("app.title"));
+
+
+//        Properties properties=new Properties();
+//        PropertyResolver propertyResolver=new PropertyResolver(properties);
+//        propertyResolver.registerconvertor(Long.class,s -> Long.valueOf(s));
+        /// 读取所有配置
+
+//        Properties properties=new Properties();
+//        Map<String, Object> map = YamlUtils.loadYamlAsPlainMap("application.yaml");
+//        PropertyResolver propertyResolver=new PropertyResolver(properties);
+        /// todo,现在扫描包可以扫到了，properties也可以获取到配置了，该注册bean了
+
     }
+
 }

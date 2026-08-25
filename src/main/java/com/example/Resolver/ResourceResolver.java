@@ -1,9 +1,9 @@
-package com.example;
+package com.example.Resolver;
 
+import com.example.Record.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;

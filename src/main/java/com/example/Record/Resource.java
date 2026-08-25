@@ -1,4 +1,4 @@
-package com.example;
+package com.example.Record;
 
 //record自动生成构造函数和tostring hashcode，get，set等方法
 public record Resource(String path,String name) {
