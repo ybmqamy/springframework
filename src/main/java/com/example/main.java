@@ -2,6 +2,7 @@ package com.example;
 
 import com.example.Resolver.PropertyResolver;
 import com.example.Utils.YamlUtils;
+import com.example.context.AnnotationConfigApplicationContext;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -10,7 +11,7 @@ import java.util.Map;
 import java.util.Properties;
 
 public class main {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws NoSuchMethodException {
 //        ResourceResolver rr = new ResourceResolver("");
 //        List<String> classList = rr.scan(res -> {
 //            String name = res.name(); // 资源名称"org/example/Hello.class"
@@ -47,7 +48,12 @@ public class main {
 //        Map<String, Object> map = YamlUtils.loadYamlAsPlainMap("application.yaml");
 //        PropertyResolver propertyResolver=new PropertyResolver(properties);
         /// todo,现在扫描包可以扫到了，properties也可以获取到配置了，该注册bean了
-
+        /// 完成bean的实例化，
+        /// 在如果有构造方法，那么此时bean和构造方法是强依赖，必须同时完成创建与注入的工作
+        /// 而如果是字段注入，就可以先创建实例，等创建后再注入，这两个过程可以分开
+        /// 对于第一种循环依赖，我们暂时没有办法解决
+        /// 但对于第二种循环依赖，我们只需要直接先创建再注入即可
+        /// 原spring通过三级缓存机制解决循环依赖问题
     }
 
 }
