@@ -5,6 +5,7 @@ import com.example.Annotation.ComponentScan;
 import com.example.Annotation.Value;
 import com.example.Exception.NoInitOrDestoryMethodException;
 
+import javax.annotation.Nullable;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 
@@ -41,4 +42,13 @@ public class ClassUtils {
         // 没有找到匹配的注解
         return null;
     }
+    @Nullable
+    public static Method getnamemethod(Class<?> clazz,String namemethod){
+        try {
+            return clazz.getMethod(namemethod);
+        } catch (NoSuchMethodException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
 }

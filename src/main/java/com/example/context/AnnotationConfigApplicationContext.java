@@ -10,13 +10,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.annotation.Annotation;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Executable;
-import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
+import java.lang.reflect.*;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -25,16 +20,18 @@ import java.util.stream.Collectors;
  * 创建bean的definition（分component和bean）
  * 完成bean的实例化（component和bean）
  */
-public class AnnotationConfigApplicationContext {
+/// autoClose的定义可以放到对外提供的application接口上
+public class AnnotationConfigApplicationContext implements AutoCloseable {
 
     public final Map<String, BeanDefinition> beans;
 
     public final PropertyResolver propertyResolver;
 
-
     /// 跟踪所有已创建bean的名字，如果bean尚未创建，则报错
     Set<String> createdbeansname;
+
     Logger logger= LoggerFactory.getLogger(getClass());
+
     /// 获取到所有bean的定义，现在已经可以找到bean了，我们需要扫描所有的包，找到class类，创建bean
     public AnnotationConfigApplicationContext(Class<?> config, PropertyResolver propertyResolver) throws NoSuchMethodException {
         this.propertyResolver=propertyResolver;
@@ -66,7 +63,92 @@ public class AnnotationConfigApplicationContext {
                         }
                     }
         });
+        /// 现在创建弱依赖，对于弱依赖，我们可以先创建再注入，直接通过反射先创建
+        this.beans.values().forEach(def -> {
+            injectBean(def);
+        });
+
+        /// 调用init方法，完成弱依赖的初始化
+        this.beans.values().forEach(def -> {
+            initBean(def);
+        });
     }
+    /// 完成全部的初始化
+    private void initBean(BeanDefinition def) {
+        callMethod(def.getInstance(), def.getInitMethod(), def.getInitName());
+    }
+
+    private void callMethod(Object instance, Method initMethod, String initName) {
+        /// 完成初始化，如果一个方法没有初始化方法，只有名字，那么它就是bean方法，此时需要通过名字获取对应的初始化方法
+        if(initMethod!=null){
+            try {
+                initMethod.invoke(instance);
+            } catch (Exception e) {
+                throw new BeanCreationException("bean创建失败");
+            }
+        }else if(initName!=null){
+            Method method = ClassUtils.getnamemethod(instance.getClass(), initName);
+            try {
+                method.invoke(instance);
+            } catch (Exception e) {
+                throw new BeanCreationException("bean创建失败");
+            }
+        }
+    }
+
+    /// 在注入bean时，还有一个事情，就是若子类继承了父类，那么子类也可以获得父类的autowired
+    private void injectBean(BeanDefinition def) {
+        try {
+            injectproperties(def,def.getAClass(),def.getInstance());
+        }catch (Exception e){
+            throw new BeanCreationException("creating fail");
+        }
+
+    }
+
+    private void injectproperties(BeanDefinition def, Class<?> aClass, Object instance) {
+        /// 尝试注入，通过反射获取所有的字段和方法
+        /// autowired的字段，autowired的方法
+        for (Field f : aClass.getDeclaredFields()) {
+            tryInjectProperties(def, aClass, instance, f);
+        }
+        for (Method m : aClass.getDeclaredMethods()) {
+            tryInjectProperties(def, aClass, instance, m);
+        }
+        /// 在父类查找Field和Method并注入:
+        Class<?> superClazz = aClass.getSuperclass();
+        if (superClazz != null) {
+            /// 虽然我的实例在我的父类那里，但我自己也是要的呀
+            injectproperties(def, superClazz, instance);
+        }
+    }
+    /// 这个地方先暂时这样，但只这样肯定不行，等我ioc完成全链路调试的再看这个
+    private void tryInjectProperties(BeanDefinition def, Class<?> aClass, Object instance, Field f){
+        /// 尝试为字段注入
+        Autowired autowired = f.getAnnotation(Autowired.class);
+        f.setAccessible(true); ///必须设置为可访问
+        if(autowired!=null){;
+            try {
+                f.set(aClass,instance);
+            }catch (Exception e){
+                throw new IllegalArgumentException("注入实例与字段不一致");
+            }
+        }
+    }
+    private void tryInjectProperties(BeanDefinition def, Class<?> aClass, Object instance, Method m){
+        /// 尝试为方法注入
+        Autowired autowired = m.getAnnotation(Autowired.class);
+        m.setAccessible(true);
+        if(autowired!=null){;
+            try {
+                m.invoke(instance);
+            }catch (Exception e) {
+                throw new IllegalArgumentException("注入实例与方法不一致");
+            }
+        }
+    }
+
+
     /// 创建bean的单实例对象
     public Object createBeanAsEarlySingleton(BeanDefinition beanDefinition) throws Exception {
         /// 如果a依赖了b，b依赖了a，那么当转一圈回来时，一定会有重复的实例
@@ -354,6 +436,28 @@ public class AnnotationConfigApplicationContext {
         }
         return instance;
     }
+    ///  在applicationcontext关闭时自动销毁所有的bean的实例
+    @Override
+    public void close() throws Exception {
+        beans.values().stream().forEach(beanDefinition -> {
+            destoryBean(beanDefinition.getInstance(),beanDefinition.getDestoryMethod(),beanDefinition.getDestoryName());
+        });
+    }
 
-
+    private void destoryBean(Object beanDefinition, Method destoryMethod, String destoryName) {
+        if(destoryMethod!=null){
+            try {
+                destoryMethod.invoke(beanDefinition);
+            }catch (Exception e){
+                throw new DestroyBeanFailedException("销毁bena失败");
+            }
+        }else if(destoryName!=null){
+            Method method = ClassUtils.getnamemethod(beanDefinition.getClass(), destoryName);
+            try {
+                method.invoke(beanDefinition);
+            }catch (Exception e){
+                throw new DestroyBeanFailedException("销毁bean失败");
+            }
+        }
+    }
 }
