@@ -1,3 +1,12 @@
 app:
   title: April Framework
   version: 1.0.0
+  author: amiya
+  timeout: 30
+  enabled: true
+  datasource:
+    url: jdbc:mysql://localhost:3306/test
+    username: root
+    password: 123456
+server:
+  port: 8080

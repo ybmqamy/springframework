@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.function.Function;
 
 ///仿写扫描包，根据class过滤出文件
+/// 扫描包目前是硬编码拆解的字符串，效率一般
 
 public class ResourceResolver {
     /// 指定的扫描包，指示我要对哪个包展开扫描

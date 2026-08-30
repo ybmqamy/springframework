@@ -5,7 +5,7 @@ import java.lang.reflect.Method;
 
 /// 创建bean的主体，包括各种bean的信息
 /// 因为bean是ioc自己创建的，所以我们需要根据注解，获取对应类的构造方法，来构造这个对象
-public class BeanDefinition {
+public class BeanDefinition implements Comparable<BeanDefinition> {
     String name; ///名字
 
     Class<?> aClass; ///class对象
@@ -44,6 +44,11 @@ public class BeanDefinition {
     }
 
     public BeanDefinition() {
+    }
+    ///  重构比较器，按照正确的order字段排序
+    @Override
+    public int compareTo(BeanDefinition o) {
+        return Integer.compare(this.order, o.order);
     }
 
     public BeanDefinition(String name, Class<?> aClass, Object instance, Constructor<?> constructor, String FactoryName, Method FactoryMethod, int order, boolean primary, String initName, String destoryName, Method initMethod, Method destoryMethod) {
