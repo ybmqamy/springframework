@@ -1,10 +1,13 @@
 package com.example;
 
 import com.example.Resolver.PropertyResolver;
+import com.example.Resolver.ProxyResolver;
 import com.example.Utils.YamlUtils;
 import com.example.context.AnnotationConfigApplicationContext;
 import com.example.test.*;
 
+import java.lang.reflect.InvocationHandler;
+import java.security.spec.RSAOtherPrimeInfo;
 import java.util.Map;
 import java.util.Properties;
 import java.util.function.ObjDoubleConsumer;
@@ -39,14 +42,35 @@ public class main {
 //            System.out.println("UserController.mapper = " + controller.getMapper());
             OriginBean bean = (OriginBean) ctx.getBean("com.example.test.OriginBean");
             /// SecondProxyBean@4590c9c3 此时拿到的就是被代理后的对象
-        /// 此时second值更大，拿到更大的代理
+            /// 此时second值更大，拿到更大的代理
             Object bean1 = ctx.getBean("com.example.test.FirstProxyBeanPostProcessor");
             System.out.println("================================");
             System.out.println(bean);
             System.out.println(bean1);
 
+            System.out.println("=======================================");
+            /// 这里bob没有注册成为bean
+            Bob bob=new Bob("daoguan");
+            System.out.println(bob.hello());
+            Bob createproxy = new ProxyResolver().createproxy(bob, new PoliteInvocationHandler());
+            /// 此时代理成功，输出的是加强的bob
+            System.out.println(createproxy.hello());
+            /// 此时生成的是代理后的对象
+            System.out.println(createproxy.getClass().getName());
+
         }
         // 3. try-with-resources 关闭，触发 @PreDestroy / destroyMethod
         System.out.println("\n========== 容器已关闭 ==========");
+        /// 测试aop的效果,
     }
+    /// aop的实现
+    /// 编译期：在编译时，由编译器把切面调用编译进字节码，这种方式需要定义新的关键字并扩展编译器，AspectJ就扩展了Java编译器，使用关键字aspect来实现织入；
+    /// 类加载器：在目标类被装载到JVM时，通过一个特殊的类加载器，对目标类的字节码重新“增强”；
+    /// 运行期：目标对象和切面都是普通Java类，通过JVM的动态代理功能或者第三方库实现运行期动态织入。
+    /// Spring实际上内置了多种代理机制，如果一个Bean声明的类型是接口，那么Spring直接使用Java标准库实现对接口的代理，如果一个Bean声明的类型是Class，那么Spring就使用CGLIB动态生成字节码实现代理。
+    /// cglib通过动态生成字节码来实现代理，用表达式实现aop匹配，容易漏掉或者匹配太大，这里采用基于annotation注解的形式来注入
+    ///CGLIB（Code Generation Library）是一个高性能的代码生成库，主要用于为没有实现接口的类创建动态代理。它是对 JDK 动态代理的补充，尤其在需要代理普通类或追求更高性能时非常有用。
+    ///CGLIB 通过动态生成目标类的子类，并在子类中拦截方法调用来实现代理逻辑。它使用 MethodInterceptor 接口来定义拦截逻辑，并通过 Enhancer 类生成代理对象。由于 CGLIB 是直接操作字节码，其性能优于基于反射的 JDK 动态代理。
+    ///但很可惜cglib已经停止维护了，github推荐使用bytebuddy
+    /// 但同时我们也失去了对接口进行代理
 }

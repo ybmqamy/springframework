@@ -18,6 +18,8 @@ public interface ApplicationContext extends AutoCloseable {
     // 根据type返回一组Bean，未找到返回空List
     <T> List<T> findBeans(Class<T> requiredType);
 
+    <T> T getBean(String name);
+
     // 关闭并执行所有bean的destroy方法
     void close();
 }

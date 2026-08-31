@@ -18,12 +18,10 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-///获得到bean的
 /**
  * 创建bean的definition（分component和bean）
  * 完成bean的实例化（component和bean）
  */
-/// autoClose的定义可以放到对外提供的application接口上
 public class AnnotationConfigApplicationContext implements AutoCloseable,ApplicationContext{
 
     public final Map<String, BeanDefinition> beans;
@@ -340,6 +338,7 @@ public class AnnotationConfigApplicationContext implements AutoCloseable,Applica
         /// 把创建好的实例存回BeanDefinition，否则getInstance()永远是null
         beanDefinition.setInstance(instance);
         /// 为每个实例执行beanpostprocessor，执行里面定义的过程，这里已经全部替换了，但有一些是不需要设置新的bean的，而是设置原始的bean，所以我们需要让beanpostprocessor保存对应的实例
+        /// 这里调换了创建的逻辑，先去完善beanpostprocessor，然后再创建普通的实例，当创建普通实例时postprocessor已经填充好了，这时直接替换替换即可
         for (BeanPostProcessor beanPostProcessor : beanPostProcessors) {
             Object beanpostprocessor = beanPostProcessor.postProcessBeforeInitialization(beanDefinition.getInstance(), beanDefinition.getName());
             /// 如果当前实例和原本定义的bean实例不一样，肯定要替换一下
@@ -358,7 +357,7 @@ public class AnnotationConfigApplicationContext implements AutoCloseable,Applica
         if(beans.isEmpty()){
             return null;
         }
-        /// 如果只有唯一一个实例，直接返回即可
+        /// 如果只有唯一一个def，直接返回即可
         if(beans.size()==1){
             return (T) beans.get(0);
         }
