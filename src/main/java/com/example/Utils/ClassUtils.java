@@ -15,9 +15,11 @@ public class ClassUtils {
         return clazz.getAnnotation(annotationType);
     }
     public static String getBeanName(Class<?> aClass){
-        return aClass.getName();
+        /// 这里字符串截取，直接返回类名
+        return  aClass.getSimpleName();
     }
     public static String getBeanName(Method method){
+        /// method.getName() 这是根据方法的名字找的
         return method.getName();
     }
     public static <A extends Annotation> Method findAnnotationMethod(Class<?> clazz, Class<A> annotationType){
@@ -26,7 +28,8 @@ public class ClassUtils {
                 return declaredMethod;
             }
         }
-        throw new NoInitOrDestoryMethodException("Aprilframework not find init or destory method");
+        return null;
+        /// 这里用在了找pre方法上，但这个不应该是强制性的要求
     }
     public static <A extends Annotation> A findAnnotationParameter(Annotation[] annotations, Class<A> annotationType) {
         if (annotations == null || annotationType == null) {

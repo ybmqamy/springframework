@@ -1,5 +1,6 @@
 package com.example.Utils;
 
+import com.example.Exception.ApplicationCreateException;
 import com.example.Resolver.PropertyResolver;
 import com.example.context.AnnotationConfigApplicationContext;
 import com.example.context.ApplicationContext;
@@ -9,11 +10,15 @@ import java.util.Map;
 import java.util.Properties;
 
 public class ApplicationUtils {
+    private static ApplicationContext applicationContext;
+    /// 设置applicationcontest，复用已有的context
+    public static void setApplicationContext(ApplicationContext context) {
+        applicationContext = context;
+    }
     public static ApplicationContext getRequiredApplicationContext() throws NoSuchMethodException {
-        Map<String, Object> map = YamlUtils.loadYamlAsFlatMap("application.yaml");
-        Properties properties = new Properties();
-        map.forEach((k, v) -> properties.put(k, String.valueOf(v)));
-        PropertyResolver resolver = new PropertyResolver(properties);
-        return new AnnotationConfigApplicationContext(AppConfig.class,resolver);
+        if(applicationContext==null){
+            throw new ApplicationCreateException("当前主容器尚未初始化");
+        }
+        return applicationContext;
     };
 }

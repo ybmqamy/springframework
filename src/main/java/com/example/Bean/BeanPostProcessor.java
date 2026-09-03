@@ -8,6 +8,7 @@ import java.lang.reflect.InvocationTargetException;
 /// applicationcontext只需要检测对应的类是否实现了该方法即可
 /// BeanPostProcessor自身也作为一个bean返回，所以初始化完成，找到所有有这个的，直接转换即可
 /// postProcessOnSetProperty保存原始的bean，并不是所有的实例都要替换的
+/// 这个是作用于全局bean的，只有内部加了条件才会筛选
 public interface BeanPostProcessor {
     @Nullable
     default Object postProcessBeforeInitialization(Object bean, String beanName) throws Exception {

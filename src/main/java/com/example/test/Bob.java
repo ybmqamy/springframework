@@ -3,25 +3,14 @@ package com.example.test;
 import com.example.Annotation.*;
 
 @Component
-@Around("PoliteInvocationHandler")
+@Transactional("NoPoliteInvocationHandler")
 public class Bob {
     public String name;
-
-    public Bob() {
-    }
-
-    public Bob(String name) {
-        this.name = name;
-    }
 
     @testannotation
     public String hello() {
         return "Hello, " + name + ".";
     }
-    @PostConstruct
-    void init(){}
-    @PreDestroy
-    void destro(){};
 
     /**
      * 获取

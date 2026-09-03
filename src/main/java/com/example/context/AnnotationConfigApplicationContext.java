@@ -6,6 +6,7 @@ import com.example.Bean.BeanPostProcessor;
 import com.example.Exception.*;
 import com.example.Resolver.PropertyResolver;
 import com.example.Resolver.ResourceResolver;
+import com.example.Utils.ApplicationUtils;
 import com.example.Utils.ClassUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,6 +38,9 @@ public class AnnotationConfigApplicationContext implements AutoCloseable,Applica
 
     /// 获取到所有bean的定义，现在已经可以找到bean了，我们需要扫描所有的包，找到class类，创建bean
     public AnnotationConfigApplicationContext(Class<?> config, PropertyResolver propertyResolver) throws NoSuchMethodException {
+        /// 第一时间注册当前容器，否则 BeanPostProcessor 在创建 bean 时拿不到容器
+        /// 直接在创建时设置全局唯一实例
+        ApplicationUtils.setApplicationContext(this);
         this.propertyResolver=propertyResolver;
         Set<String> beanClassNames = scanForClassNames(config);
         this.beans=createbeans(beanClassNames);
@@ -83,13 +87,13 @@ public class AnnotationConfigApplicationContext implements AutoCloseable,Applica
                         }
                     }
         });
-
         /// 现在创建弱依赖，对于弱依赖，我们可以先创建再注入，直接通过反射先创建
         this.beans.values().forEach(def -> {
             injectBean(def);
         });
 
         /// 调用init方法，完成弱依赖的初始化
+        /// 定义的post和pre方法此时在这里完成调用
         this.beans.values().forEach(def -> {
             initBean(def);
         });
@@ -265,6 +269,7 @@ public class AnnotationConfigApplicationContext implements AutoCloseable,Applica
         final Annotation[][] parametersAnnos = executable.getParameterAnnotations();
         Object[] args = new Object[parameters.length];
         /// todo强依赖的注入，如果参数中有value和autowired，那么必须创建和注入一起完成，且遇到循环依赖就爆炸
+        /// todo 这个地方现在导致了一个问题，这里强制的必须有一个value或者autowired的注入对象，要么构造函数就使用默认，不能直接使用原来的构造函数
         for (int i = 0; i < parameters.length; i++) {
             final Parameter param = parameters[i];
             final Annotation[] paramAnnos = parametersAnnos[i];
@@ -278,7 +283,7 @@ public class AnnotationConfigApplicationContext implements AutoCloseable,Applica
                         String.format("Cannot specify @Autowired when create @Configuration bean '%s': %s.", beanDefinition.getName(), beanDefinition.getAClass().getName()));
             }
 
-            // 参数需要@Value或@Autowired两者之一:
+            /// 参数需要@Value或@Autowired两者之一:
             if (value != null && autowired != null) {
                 throw new BeanCreationException(
                         String.format("Cannot specify both @Autowired and @Value when create bean '%s': %s.", beanDefinition.getName(), beanDefinition.getAClass().getName()));
@@ -339,6 +344,7 @@ public class AnnotationConfigApplicationContext implements AutoCloseable,Applica
         beanDefinition.setInstance(instance);
         /// 为每个实例执行beanpostprocessor，执行里面定义的过程，这里已经全部替换了，但有一些是不需要设置新的bean的，而是设置原始的bean，所以我们需要让beanpostprocessor保存对应的实例
         /// 这里调换了创建的逻辑，先去完善beanpostprocessor，然后再创建普通的实例，当创建普通实例时postprocessor已经填充好了，这时直接替换替换即可
+        /// 这个是对所有bean生效的
         for (BeanPostProcessor beanPostProcessor : beanPostProcessors) {
             Object beanpostprocessor = beanPostProcessor.postProcessBeforeInitialization(beanDefinition.getInstance(), beanDefinition.getName());
             /// 如果当前实例和原本定义的bean实例不一样，肯定要替换一下
@@ -417,14 +423,16 @@ public class AnnotationConfigApplicationContext implements AutoCloseable,Applica
             Mapper mapper = ClassUtils.findAnnotation(clazz, Mapper.class);
             Controller controller = ClassUtils.findAnnotation(clazz, Controller.class);
             if(controller!=null||service!=null||mapper!=null||component!=null){
+                /// 这里有一个问题，放到bean中的是全限定类名，而不是bean本身的名字，这显然是不对的，等我改一下
                 String beanName = ClassUtils.getBeanName(clazz);
                 BeanDefinition def = new BeanDefinition(
                         beanName, clazz, getSuitableConstructor(clazz),
                         getOrder(clazz), clazz.isAnnotationPresent(Primary.class),
                         // init/destroy方法名称:
                         null, null,
-                        // 查找@PostConstruct方法:
+                        // 查找@PostConstruct方法: ///找不到就返回空了
                         ClassUtils.findAnnotationMethod(clazz, PostConstruct.class),
+                        /// 这个时候post和pre都不再是强制性的了，在最后启动的最后调用了全部的init方法
                         // 查找@PreDestroy方法:
                         ClassUtils.findAnnotationMethod(clazz, PreDestroy.class));
                 /// 这里传递影响到同一个原对象
@@ -462,6 +470,7 @@ public class AnnotationConfigApplicationContext implements AutoCloseable,Applica
                     declaredMethod.isAnnotationPresent(Primary.class), // primary
                     bean.initMethod().isEmpty() ? null : bean.initMethod(),    // initName
                     bean.destroyMethod().isEmpty() ? null : bean.destroyMethod(), // destroyName
+                    /// initName和destroyName没用就默认是空
                     null, null                                // initMethod / destroyMethod
             );
             declaredMethod.setAccessible(true);
@@ -596,5 +605,14 @@ public class AnnotationConfigApplicationContext implements AutoCloseable,Applica
             throw new NoSuchBeanDefinitionException("没有这个东西");
         }
         return t;
+    }
+
+    /// 根据名字查找指定的 BeanDefinition，未找到抛出 NoSuchBeanDefinitionException
+    public BeanDefinition getBeanDefinition(String name) {
+        BeanDefinition def = this.beans.get(name);
+        if (def == null) {
+            throw new NoSuchBeanDefinitionException(String.format("No bean definition named '%s'.", name));
+        }
+        return def;
     }
 }

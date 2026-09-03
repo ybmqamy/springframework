@@ -33,8 +33,12 @@ public class AppConfig {
     /// 注册拦截器成为bean
     /// 这里拦截器已经注册为bean了，所以在创建的时候，也可以创建这个对应的实例
     /// 那我定义的around那个玩意也一定会生效
-    @Bean(initMethod = "init",destroyMethod = "destory")
+    @Bean
     AroundProxyBeanPostProcessor createAroundProxyBeanPostProcessor() {
         return new AroundProxyBeanPostProcessor();
+    }
+    @Bean
+    TransactionalProxyBeanPostProcessor transactionalProxyBeanPostProcessor(){
+        return new TransactionalProxyBeanPostProcessor();
     }
 }
