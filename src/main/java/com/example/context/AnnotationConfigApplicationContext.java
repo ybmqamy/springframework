@@ -11,12 +11,9 @@ import com.example.Utils.ClassUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nullable;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
 import java.util.*;
-import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
@@ -227,7 +224,7 @@ public class AnnotationConfigApplicationContext implements AutoCloseable,Applica
             String name = autowired.name();
             boolean required = autowired.value();
             /// 这里先通过bean的class去找
-            BeanDefinition bean = (BeanDefinition) findBean(accessibleType);
+            BeanDefinition bean = findBeanDefinition(accessibleType);
             if (required && bean == null) {
                 throw new UnsatisfiedDependencyException(String.format("Dependency bean not found when inject %s.%s for bean '%s': %s",aClass.getSimpleName(),
                         accessibleName, def.getName(), def.getAClass().getName()));
@@ -270,6 +267,7 @@ public class AnnotationConfigApplicationContext implements AutoCloseable,Applica
         Object[] args = new Object[parameters.length];
         /// todo强依赖的注入，如果参数中有value和autowired，那么必须创建和注入一起完成，且遇到循环依赖就爆炸
         /// todo 这个地方现在导致了一个问题，这里强制的必须有一个value或者autowired的注入对象，要么构造函数就使用默认，不能直接使用原来的构造函数
+        /// todo这个地方并不太可以理解成一个错误，而是springioc自身的特性，bean的构造参数必须来自ioc
         for (int i = 0; i < parameters.length; i++) {
             final Parameter param = parameters[i];
             final Annotation[] paramAnnos = parametersAnnos[i];
@@ -302,7 +300,7 @@ public class AnnotationConfigApplicationContext implements AutoCloseable,Applica
                 String name = autowired.name();
                 boolean required = autowired.value();
                 /// 获取依赖的BeanDefinition:  这里就判断了是不是paimary 的字段
-                BeanDefinition dependsOnDef = (BeanDefinition) findBean(type);
+                BeanDefinition dependsOnDef = findBeanDefinition(type);
                 /// 检测required==true? 如果不等于true，说明bean缺失，我要创建别的bean
                 if (required && dependsOnDef == null) {
                     throw new BeanCreationException(String.format("Missing autowired bean with type '%s' when create bean '%s': %s.", type.getName(),
@@ -356,52 +354,40 @@ public class AnnotationConfigApplicationContext implements AutoCloseable,Applica
         return beanDefinition.getInstance();
     }
 
-    /// 通过名字找到bean
-    public <T> T findBean(Class<T> name){
-        /// 这里找到属于同一个接口下的所有bean
-        List<BeanDefinition> beans = (List<BeanDefinition>) findBeans(name);
-        if(beans.isEmpty()){
+    /// 根据type找到唯一的BeanDefinition（处理@Primary优先级），未找到返回null
+    private BeanDefinition findBeanDefinition(Class<?> type) {
+        List<BeanDefinition> defs = findBeanDefinitions(type);
+        if (defs.isEmpty()) {
             return null;
         }
-        /// 如果只有唯一一个def，直接返回即可
-        if(beans.size()==1){
-            return (T) beans.get(0);
+        /// 只有一个候选，直接返回
+        if (defs.size() == 1) {
+            return defs.get(0);
         }
-        /// 如果有多个实例，我需要找谁标注了primary，通过primary标注优先返回哪一个
-        List<BeanDefinition> primarybeanDefinitions = beans.stream().filter(beanDefinition ->
-                beanDefinition.isPrimary()).collect(Collectors.toList());
-        if(primarybeanDefinitions.size()==1){
-            return (T) primarybeanDefinitions.get(0);
+        /// 多个候选时，优先返回标了@Primary的那个
+        List<BeanDefinition> primaryDefs = defs.stream()
+                .filter(BeanDefinition::isPrimary)
+                .collect(Collectors.toList());
+        if (primaryDefs.size() == 1) {
+            return primaryDefs.get(0);
         }
-        if(primarybeanDefinitions.isEmpty()){
-            try {
-                throw new NoUniqueBeanDefinitionException("No sole bean，AprilFrameWork not find @Primary specified");
-            } catch (NoUniqueBeanDefinitionException e) {
-                throw new RuntimeException(e);
-            }
-        }else if(primarybeanDefinitions.size()>1){
-            try {
-                throw new NoUniqueBeanDefinitionException("multitude of beans, @Primary should be specified");
-            } catch (NoUniqueBeanDefinitionException e) {
-                throw new RuntimeException(e);
-            }
+        if (primaryDefs.isEmpty()) {
+            throw new NoUniqueBeanDefinitionException(
+                    String.format("No unique bean of type '%s', please specify @Primary.", type.getName()));
         }
-        /// 所有的情况都已经判断完成，直接返回即可
-        return null;
+        throw new NoUniqueBeanDefinitionException(
+                String.format("Multiple beans of type '%s' are marked with @Primary.", type.getName()));
     }
+
     /// 对于返回类型不一致的bean，比如若干个bean返回都是某一个类的子类，我们必须遍历每一个bean，找到符合的bean
-    public <T> List<T> findBeans(Class<T> requiredType){
+    private List<BeanDefinition> findBeanDefinitions(Class<?> requiredType) {
         /// isAssignableFrom（或接口）是否可以被赋值给另一个类（或接口）。简单来说，它用来检查类型之间的兼容性
         /// 如果是实现的接口，那么可以赋值，说明我找到了属于同一个接口下的所有bean
         ///  类似于instanceof 但是它不依赖于具体的实例
-        return (List<T>) this.beans.values().stream().filter(
-                    new Predicate<BeanDefinition>() {
-                        @Override
-                        public boolean test(BeanDefinition beanDefinition) {
-                            return requiredType.isAssignableFrom(beanDefinition.getAClass());
-                        }
-                    }
-            ).sorted().collect(Collectors.toList());
+        return this.beans.values().stream()
+                .filter(def -> requiredType.isAssignableFrom(def.getAClass()))
+                .sorted()
+                .collect(Collectors.toList());
     }
 
     private Map<String, BeanDefinition> createbeans(Set<String> beanClassNames) throws NoSuchMethodException {
@@ -418,11 +404,19 @@ public class AnnotationConfigApplicationContext implements AutoCloseable,Applica
             /// 找到了对应的class，就可以通过反射获得到所有beandefinition的一切
             /// 首先看看这个扫描包下的class有没有对应的注释，如果有，说明它应该被定义成bean
             /// 这里先把它们分开处理
+        /// TODO 待解决：@Configuration 不该依赖 @Component/@Service/@Mapper/@Controller 才能被注册。
+        ///  现状：Configuration 的检查被放在"是否组件"判断之后，导致只标 @Configuration 的类（如 JdbcConfiguration）
+        ///  永远不会被注册，其 @Bean 方法也不会被扫描。
+        ///  正确认知：Spring 里 @Configuration 与那四个组件注解是并列的，共享同一个根 @Component（通过元注解），
+        ///  不是"config 依赖 component"。
+        ///  修复方向（二选一）：
+        ///   1) 最小改法：把 Configuration 提出来与四个组件注解平级，加入下面 if 的注册条件，并在 if 内调用 scanFactoryMethod；
+        ///   2) Spring 式改法：给 @Configuration/@Service/@Mapper/@Controller 加 @Component 元注解，并让
+        ///      ClassUtils.findAnnotation 支持向上递归查找元注解，最终统一归一到 @Component 一个根上。
+            /// todo已解决，此时component是全部几个注解的元注解
             Component component = ClassUtils.findAnnotation(clazz, Component.class);
-            Service service = ClassUtils.findAnnotation(clazz, Service.class);
-            Mapper mapper = ClassUtils.findAnnotation(clazz, Mapper.class);
-            Controller controller = ClassUtils.findAnnotation(clazz, Controller.class);
-            if(controller!=null||service!=null||mapper!=null||component!=null){
+            ///统一到一个component
+            if(component!=null){
                 /// 这里有一个问题，放到bean中的是全限定类名，而不是bean本身的名字，这显然是不对的，等我改一下
                 String beanName = ClassUtils.getBeanName(clazz);
                 BeanDefinition def = new BeanDefinition(
@@ -548,7 +542,8 @@ public class AnnotationConfigApplicationContext implements AutoCloseable,Applica
         return annotation != null;
     }
     /// 通过名字拿到bean实例，未创建则先创建（配置类作为工厂时用它拿到工厂实例）
-    public Object getBean(String name) {
+    @Override
+    public <T> T getBean(String name) {
         BeanDefinition def = this.beans.get(name);
         if (def == null) {
             throw new NoSuchBeanDefinitionException(String.format("No bean defined with name '%s'.", name));
@@ -561,7 +556,25 @@ public class AnnotationConfigApplicationContext implements AutoCloseable,Applica
                 throw new RuntimeException(e);
             }
         }
-        return instance;
+        return (T) instance;
+    }
+
+    /// 根据type返回唯一的Bean实例
+    @Override
+    public <T> T getBean(Class<T> requiredType) {
+        BeanDefinition def = findBeanDefinition(requiredType);
+        if (def == null) {
+            throw new NoSuchBeanDefinitionException(String.format("No bean defined with type '%s'.", requiredType.getName()));
+        }
+        return getBean(def.getName());
+    }
+
+    /// 根据type返回一组Bean实例
+    @Override
+    public <T> List<T> getBeans(Class<T> requiredType) {
+        return findBeanDefinitions(requiredType).stream()
+                .map(def -> (T) getBean(def.getName()))
+                .collect(Collectors.toList());
     }
     ///  在applicationcontext关闭时自动销毁所有的bean的实例
     @Override
@@ -590,24 +603,11 @@ public class AnnotationConfigApplicationContext implements AutoCloseable,Applica
 
     @Override
     public boolean containsBean(String name) {
-        for (BeanDefinition def : this.beans.values()) {
-            if(def.getName().equals(name)){
-                return true;
-            }
-        }
-        return false;
-    }
-
-    @Override
-    public <T> T findBean(String name) {
-        T t = (T) this.beans.get(name);
-        if(t==null){
-            throw new NoSuchBeanDefinitionException("没有这个东西");
-        }
-        return t;
+        return this.beans.containsKey(name);
     }
 
     /// 根据名字查找指定的 BeanDefinition，未找到抛出 NoSuchBeanDefinitionException
+    @Override
     public BeanDefinition getBeanDefinition(String name) {
         BeanDefinition def = this.beans.get(name);
         if (def == null) {

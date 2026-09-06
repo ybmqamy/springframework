@@ -1,17 +1,17 @@
 package com.example.test;
 
-import com.example.Annotation.Bean;
-import com.example.Annotation.Component;
-import com.example.Annotation.ComponentScan;
-import com.example.Annotation.Configuration;
-import com.example.Annotation.PostConstruct;
-import com.example.Annotation.PreDestroy;
+import com.example.Annotation.*;
 import com.example.Bean.AroundProxyBeanPostProcessor;
+import com.example.Bean.TransactionalProxyBeanPostProcessor;
+import com.example.Jdbc.JdbcTemplate;
+
+import javax.sql.DataSource;
 
 /// 配置类：需要同时标 @Configuration 和 @Component 才会被扫描创建
+/// 这是我ioc启动的门户
 @Configuration
 @Component
-@ComponentScan("com.example.test")
+@ComponentScan({"com.example.test","com.example.Configuration","com.example.Manager"})
 public class AppConfig {
 
     @PostConstruct
@@ -36,9 +36,5 @@ public class AppConfig {
     @Bean
     AroundProxyBeanPostProcessor createAroundProxyBeanPostProcessor() {
         return new AroundProxyBeanPostProcessor();
-    }
-    @Bean
-    TransactionalProxyBeanPostProcessor transactionalProxyBeanPostProcessor(){
-        return new TransactionalProxyBeanPostProcessor();
     }
 }

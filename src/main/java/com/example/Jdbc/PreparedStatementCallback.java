@@ -1,8 +1,9 @@
 package com.example.Jdbc;
 
 import java.sql.PreparedStatement;
+import java.sql.SQLException;
 
 @FunctionalInterface
 public interface PreparedStatementCallback<T>{
-    T doInPreparedStatement(PreparedStatement ps);
+    T doInPreparedStatement(PreparedStatement ps) throws SQLException;
 }
