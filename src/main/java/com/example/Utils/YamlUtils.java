@@ -1,6 +1,5 @@
 package com.example.Utils;
 
-import com.example.main;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.IOException;

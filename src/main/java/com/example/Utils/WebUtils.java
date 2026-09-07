@@ -16,6 +16,7 @@ public class WebUtils {
         return resolver;
     }
     /// 登记为servlet
+    /// listener启动后，注册ioc容器，再接着就是创建servlet
     public static void registerDispatcherServlet(ServletContext servletContext, PropertyResolver propertyResolver) {
         var dispatcherServlet = new DispatcherServlet();
         // 注册DispatcherServlet:

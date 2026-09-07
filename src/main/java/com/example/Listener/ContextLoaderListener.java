@@ -16,9 +16,9 @@ import jakarta.servlet.ServletContextListener;
 import java.util.Map;
 import java.util.Properties;
 
-import static com.example.Utils.ApplicationUtils.applicationContext;
 
 /// listener 是最先被创建的，它负责监听servlet的状态，并且完成ioc的装配和servlet的注册
+/// 现在整个是程序的大门，它是整个servlet容器的入口
 public class ContextLoaderListener implements ServletContextListener{
     /// 在原生的spring中，就是先创建的listener，然后调用上下文初始化器，完成ioc容器的初始化
     @Override
@@ -31,6 +31,7 @@ public class ContextLoaderListener implements ServletContextListener{
         servletContext.setResponseCharacterEncoding(encoding);
         /// 设置请求和回送的解码格式
         try {
+            /// 拿到定义在web.xml中的config，里面指定的变量就是整个ioc的启动类
             ApplicationContext application = createApplicationContext(servletContext.getInitParameter("configuration"), propertyResolver);
             WebUtils.registerDispatcherServlet(servletContext, propertyResolver);
             servletContext.setAttribute("applicationContext",application);

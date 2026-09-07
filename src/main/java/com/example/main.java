@@ -135,4 +135,7 @@
     /// Listener初始化时创建IoC容器；
     /// Listener继续创建DispatcherServlet实例，并向Servlet容器注册；
     /// DispatcherServlet初始化时获取到IoC容器中的Controller实例，因此可以根据URL调用不同Controller实例的不同处理方法。
+
+    /// 这就是原生的spring打包方式，先写完各种配置，什么datasource，最后打包成war，部署在tomcat上，即成功一个web应用的全程
+
 //}
