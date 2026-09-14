@@ -380,7 +380,7 @@ public class AnnotationConfigApplicationContext implements AutoCloseable,Applica
     }
 
     /// 对于返回类型不一致的bean，比如若干个bean返回都是某一个类的子类，我们必须遍历每一个bean，找到符合的bean
-    private List<BeanDefinition> findBeanDefinitions(Class<?> requiredType) {
+    public List<BeanDefinition> findBeanDefinitions(Class<?> requiredType) {
         /// isAssignableFrom（或接口）是否可以被赋值给另一个类（或接口）。简单来说，它用来检查类型之间的兼容性
         /// 如果是实现的接口，那么可以赋值，说明我找到了属于同一个接口下的所有bean
         ///  类似于instanceof 但是它不依赖于具体的实例
@@ -576,6 +576,7 @@ public class AnnotationConfigApplicationContext implements AutoCloseable,Applica
                 .map(def -> (T) getBean(def.getName()))
                 .collect(Collectors.toList());
     }
+
     ///  在applicationcontext关闭时自动销毁所有的bean的实例
     @Override
     public void close(){

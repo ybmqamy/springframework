@@ -24,6 +24,8 @@ public interface ApplicationContext extends AutoCloseable {
     // 根据name返回BeanDefinition，供框架内部与BeanPostProcessor使用
     BeanDefinition getBeanDefinition(String name);
 
+    List<BeanDefinition> findBeanDefinitions(Class<?> requiredtype);
+
     // 关闭并执行所有bean的destroy方法
     void close();
 }

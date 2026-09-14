@@ -11,7 +11,7 @@ import javax.sql.DataSource;
 /// 这是我ioc启动的门户
 @Configuration
 @Component
-@ComponentScan({"com.example.test","com.example.Configuration","com.example.Manager"})
+@ComponentScan({"com.example.test","com.example.Configuration","com.example.Manager",})
 public class AppConfig {
 
     @PostConstruct

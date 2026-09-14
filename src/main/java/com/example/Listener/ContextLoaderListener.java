@@ -33,7 +33,7 @@ public class ContextLoaderListener implements ServletContextListener{
         try {
             /// 拿到定义在web.xml中的config，里面指定的变量就是整个ioc的启动类
             ApplicationContext application = createApplicationContext(servletContext.getInitParameter("configuration"), propertyResolver);
-            WebUtils.registerDispatcherServlet(servletContext, propertyResolver);
+            WebUtils.registerDispatcherServlet(servletContext, propertyResolver,application);
             servletContext.setAttribute("applicationContext",application);
         } catch (NestedRuntimeException e) {
             throw new RuntimeException(e);
